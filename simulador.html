@@ -1,0 +1,222 @@
+<!--
+Created using JS Bin
+http://jsbin.com
+
+Copyright (c) 2022 by anonymous (http://jsbin.com/paloguwoha/2/edit)
+
+Released under the MIT license: http://jsbin.mit-license.org
+-->
+<meta name="robots" content="noindex">
+<head>
+  <!-- Plotly.js -->
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
+</head>
+
+<body>
+
+  <fieldset>
+    <legend>Señal / Signal</legend>
+    <select id="input_signal">
+      <option value="0">Seno / Sine </option>
+      <option value="1">Seno Positiva / Sine Positive </option>
+      <option value="2">Cuadrada / Square</option>
+      <option value="3">Constante / Const </option>    
+    </select>
+  </fieldset>
+
+  <fieldset>
+    <legend>Filtro / filter</legend>    
+    <select id="input_filter">
+      <option value="0">Media movil / Moving average </option>
+      <option value="1">Media movil exponencial / Exponential moving average </option>
+      <option value="2">Paso bajo / Low-pass</option>
+      <option value="3">Paso alto / High-pass </option>
+      <option value="4">Paso banda / Band-pass </option>        
+    </select>
+    <label>Frecuencia filtro de paso bajo / Low pass filter frecuency</label><input value="2" id="input_lpff"></input><br>
+    <label>Frecuencia filtro de paso alto / High pass filter frecuency</label><input value="2" id="input_hpff"></input><br>
+    <label>Tamaño media movil / Size moving average </label><input value="5" id="input_mms"></input><br>
+    <label>Alfa media movil exponencial / Alpha exponential moving average </label><input value="0.2" id="input_aema"></input><br>
+  </fieldset>
+
+  <fieldset>
+    <legend>Ruido / Noise</legend>
+    <div>
+      <input type="checkbox" id="input_rndnoise" name="rnd" checked>
+      <label for="rnd">Aleatorio / Random</label>
+    </div>
+    <div>
+      <input type="checkbox" id="input_lfnoise" name="lf" checked>
+      <label for="lf">Baja frecuencia / Low frecuency</label>
+    </div>
+    <div>
+      <input type="checkbox" id="input_hfnoise" name="hf" checked>
+      <label for="hf">Alta frecuencia / High frecuency</label>
+    </div>
+    <label>Intensidad de ruido / Noise streng </label><input value="0.5" id="input_ns"></input><br>
+  </fieldset>
+
+
+  <button onclick="generate()">Generar / Generate</button>
+
+
+  <div id="myDiv" style="width: 1100px; height: 900px;"><!-- Plotly chart will be drawn inside this DIV --></div>
+
+<script id="jsbin-javascript">
+
+
+
+function generate(){
+
+  let time = [];  //tiempo
+  let signal = []; //original signal
+  let sensor = []; //sensor data (signal+noise)
+  let output = []; 
+  let a;
+  let dt = 0.1;  
+  let RC;
+
+  let signalType = document.getElementById("input_signal").value;
+  let filterType = document.getElementById("input_filter").value;
+
+  let lpff = parseFloat(document.getElementById("input_lpff").value);
+  let hpff = parseFloat(document.getElementById("input_hpff").value);
+  let mmSize = parseInt(document.getElementById("input_mms").value);
+  let EMA_a = parseFloat(document.getElementById("input_aema").value);
+  let noiseInts = parseFloat(document.getElementById("input_ns").value);
+
+  let add_noise_rnd = document.getElementById("input_rndnoise").checked;
+  let add_noise_lf = document.getElementById("input_lfnoise").checked;
+  let add_noise_hf = document.getElementById("input_hfnoise").checked;
+
+  for(let t = 0; t < 1000; t+=dt){  
+    let s;
+    if(signalType == 0){
+      s = Math.sin(t);
+    } else if(signalType == 1){
+      s = Math.abs(Math.sin(t));
+    } else if(signalType == 2){
+      s = Math.sin(t) > 0? 1: 0;
+    } else if(signalType == 3){
+      s = 1;
+    }
+
+    time.push(t);
+    signal.push(s);
+
+    let sn = s;
+    if(add_noise_hf){
+      sn += noiseInts*Math.sin(10*t);
+    }
+    if(add_noise_lf){ 
+      sn += noiseInts*Math.sin(0.1*t);
+    }
+    if(add_noise_rnd){
+      sn += (Math.random() * (noiseInts + noiseInts)) - noiseInts;
+    }
+
+    sensor.push(sn);
+  }
+
+  if(filterType == 0){ //media movil    
+    for(let t = mmSize; t < 1000; t++){
+      let m = 0;
+      for(let i = 0; i < mmSize; i++){
+        m += sensor[t-i];    
+      }  
+      m = m / mmSize;
+      output[t] = m;
+    }
+  } else if(filterType == 1){ //EMA    
+    output[0] = EMA_a * sensor[0];
+    for(let t = 1; t < 1000; t++){
+      output[t] = EMA_a * sensor[t] + (1-EMA_a) * output[t-1];
+    }
+  } else if(filterType == 2){ //paso bajo    
+    // f = 1/RC  
+    RC = 1 / lpff;  
+    a = dt / (RC +dt)
+    output[0] = a * sensor[0];
+    for(let t = 1; t < 1000; t++){  
+      output[t] = a*sensor[t] + (1-a)*output[t-1];
+    }
+  } else if(filterType == 3){ //paso alto    
+    // f = 1 /2PIRC  
+    RC = 1 / (2 * Math.PI * hpff);
+    let a = RC / (RC + dt);
+    output[0] = sensor[0];
+    for(let t = 1; t < 1000; t++){
+      output[t] = a * (output[t-1] + sensor[t] - sensor[t-1]);
+    }
+  } else if(filterType == 4){ //paso banda    
+    let aux_output = [];
+
+    //paso bajo
+    RC = 1 / lpff;  
+    a = dt / (RC + dt)
+    aux_output[0] = a * sensor[0];
+    for(let t = 1; t < 1000; t++){  
+      aux_output[t] = a*sensor[t] + (1-a)*aux_output[t-1];  
+    }
+
+    //paso alto
+    RC = 1 / (2 * Math.PI * hpff);
+    a = RC / (RC + dt);
+    output[0] = aux_output[0];
+    for(let t = 1; t < 1000; t++){  
+      output[t] = a * (output[t-1] + (aux_output[t] - aux_output[t-1]));  
+    }
+  }
+
+  //*******
+  //DRAW
+  //*******
+
+  var trace0 = {
+    x: time,
+    y: sensor,
+    type: 'scatter',
+    name: 'Sensor / Sensor'
+  };
+
+  var trace1 = {
+    x: time,
+    y: output,
+    type: 'scatter',
+    name: 'Salida / Output'
+  };
+
+  var trace2 = {
+    x: time,
+    y: signal,
+    type: 'scatter',
+    name: 'Señal / Signal'
+  };
+
+  var layout = {
+    xaxis: {
+      range: [ 0, 100]
+    },
+    yaxis: {
+      range: [-3, 3]
+    }
+  };
+
+  var data = [trace0, trace1, trace2];
+
+  Plotly.newPlot('myDiv', data, layout);
+
+  document.getElementById('myDiv').on('plotly_hover', function(data){
+      var infotext = data.points.map(function(d){
+      var hovertext = Plotly.d3.selectAll(".hovertext");
+      hovertext.filter(function(d, i) {return i === 0; }).selectAll('rect').style("fill" , "rgb(255, 0, 0)");
+    });
+  });
+    
+}
+
+
+
+</script>
+</body>
