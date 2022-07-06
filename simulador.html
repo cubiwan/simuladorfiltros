@@ -1,3 +1,4 @@
+<html>
 <head>
   <!-- Plotly.js -->
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
@@ -27,8 +28,8 @@
     </select>
     <label>Tamaño media movil / Size moving average </label><input value="5" id="input_mms"></input><br>
     <label>Alfa media movil exponencial / Alpha exponential moving average </label><input value="0.2" id="input_aema"></input><br>
-    <label>Frecuencia filtro de paso bajo / Low pass filter frecuency</label><input value="5" id="input_lpff"></input>Hz<br>
-    <label>Frecuencia filtro de paso alto / High pass filter frecuency</label><input value="0.1" id="input_hpff"></input>Hz<br>
+    <label>Frecuencia filtro de paso bajo / Low pass filter frecuency</label><input value="0.5" id="input_lpff"></input>Hz<br>
+    <label>Frecuencia filtro de paso alto / High pass filter frecuency</label><input value="0.05" id="input_hpff"></input>Hz<br>
   </fieldset>
 
   <fieldset>
@@ -54,9 +55,7 @@
 
   <div id="myDiv" style="width: 1100px; height: 900px;"><!-- Plotly chart will be drawn inside this DIV --></div>
 
-<script id="jsbin-javascript">
-
-
+<script>
 
 function generate(){
 
@@ -125,15 +124,15 @@ function generate(){
       output[t] = EMA_a * sensor[t] + (1-EMA_a) * output[t-1];
     }
   } else if(filterType == 2){ //paso bajo    
-    // f = 1/RC  
-    RC = 1 / lpff;  
-    a = dt / (RC +dt)
+    // f = 1 / 2PIRC   
+    RC = 1 / (2 * Math.PI * lpff);  
+    a = dt / (RC + dt)
     output[0] = a * sensor[0];
-    for(let t = 1; t < 1000; t++){  
-      output[t] = a*sensor[t] + (1-a)*output[t-1];
+    for(let t = 1; t < 1000; t++){    
+      output[t] = output[t-1] + a * (sensor[t] - output[t-1]);
     }
   } else if(filterType == 3){ //paso alto    
-    // f = 1 /2PIRC  
+    // f = 1 / 2PIRC  
     RC = 1 / (2 * Math.PI * hpff);
     let a = RC / (RC + dt);
     output[0] = sensor[0];
@@ -141,23 +140,30 @@ function generate(){
       output[t] = a * (output[t-1] + sensor[t] - sensor[t-1]);
     }
   } else if(filterType == 4){ //paso banda    
-    let aux_output = [];
+    let low_output = [];
+    let high_output = [];
 
     //paso bajo
-    RC = 1 / lpff;  
+    RC = 1 / (2 * Math.PI *lpff);  
     a = dt / (RC + dt)
-    aux_output[0] = a * sensor[0];
-    for(let t = 1; t < 1000; t++){  
-      aux_output[t] = a*sensor[t] + (1-a)*aux_output[t-1];  
+    low_output[0] = a * sensor[0];
+    for(let t = 1; t < 1000; t++){      
+      low_output[t] = low_output[t-1] + a * (sensor[t] - low_output[t-1]);  
     }
 
     //paso alto
     RC = 1 / (2 * Math.PI * hpff);
     a = RC / (RC + dt);
-    output[0] = aux_output[0];
+    high_output[0] = sensor[0];
     for(let t = 1; t < 1000; t++){  
-      output[t] = a * (output[t-1] + (aux_output[t] - aux_output[t-1]));  
+      high_output[t] = a * (high_output[t-1] + sensor[t] - sensor[t-1]); 
     }
+
+    //paso banda = paso alto - paso bajo
+    for(let t = 0; t < 1000; t++){  
+      output[t] = high_output[t] - low_output[t]; 
+    }
+
   }
 
   //*******
@@ -206,8 +212,6 @@ function generate(){
   });
     
 }
-
-
-
 </script>
 </body>
+</html>
