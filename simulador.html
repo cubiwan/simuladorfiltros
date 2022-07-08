@@ -24,12 +24,15 @@
       <option value="1">Media movil exponencial / Exponential moving average </option>
       <option value="2">Paso bajo / Low-pass</option>
       <option value="3">Paso alto / High-pass </option>
-      <option value="4">Paso banda / Band-pass </option>        
+      <option value="4">Paso banda / Band-pass </option>   
+      <option value="5">Elimina banda / Stop-band </option>   
     </select>
     <div id="div_ma"><label>Tamaño media movil / Size moving average </label><input value="5" id="input_mas"></input></div>
     <div id="div_ema"><label>Alfa media movil exponencial / Alpha exponential moving average </label><input value="0.2" id="input_aema"></input></div>
     <div id="div_lpf"><label>Frecuencia filtro de paso bajo / Low pass filter frecuency</label><input value="0.5" id="input_lpff"></input>Hz</div>
     <div id="div_hpf"><label>Frecuencia filtro de paso alto / High pass filter frecuency</label><input value="0.05" id="input_hpff"></input>Hz</div>
+    <div id="div_lf"><label>Frecuencia mínima / Low frecuency</label><input value="0.5" id="input_lff"></input>Hz</div>
+    <div id="div_hf"><label>Frecuencia maxima / High frecuency</label><input value="0.05" id="input_hff"></input>Hz</div>
   </fieldset>
 
   <fieldset>
@@ -64,28 +67,44 @@ function showInputs(){
     document.getElementById("div_ema").style.display = "none";
     document.getElementById("div_lpf").style.display = "none";
     document.getElementById("div_hpf").style.display = "none";
+    document.getElementById("div_lf").style.display = "none";
+    document.getElementById("div_hf").style.display = "none";
   } else if(filterType == 1){
     document.getElementById("div_ma").style.display = "none";
     document.getElementById("div_ema").style.display = "block";
     document.getElementById("div_lpf").style.display = "none";
     document.getElementById("div_hpf").style.display = "none";
+    document.getElementById("div_lf").style.display = "none";
+    document.getElementById("div_hf").style.display = "none";
   } else if(filterType == 2){
     document.getElementById("div_ma").style.display = "none";
     document.getElementById("div_ema").style.display = "none";
     document.getElementById("div_lpf").style.display = "block";
     document.getElementById("div_hpf").style.display = "none";
+    document.getElementById("div_lf").style.display = "none";
+    document.getElementById("div_hf").style.display = "none";
   } else if(filterType == 3){
     document.getElementById("div_ma").style.display = "none";
     document.getElementById("div_ema").style.display = "none";
     document.getElementById("div_lpf").style.display = "none";
     document.getElementById("div_hpf").style.display = "block";
+    document.getElementById("div_lf").style.display = "none";
+    document.getElementById("div_hf").style.display = "none";
   } else if(filterType == 4){
     document.getElementById("div_ma").style.display = "none";
     document.getElementById("div_ema").style.display = "none";
-    document.getElementById("div_lpf").style.display = "block";
-    document.getElementById("div_hpf").style.display = "block";
-  }
-
+    document.getElementById("div_lpf").style.display = "none";
+    document.getElementById("div_hpf").style.display = "none";
+    document.getElementById("div_lf").style.display = "block";
+    document.getElementById("div_hf").style.display = "block";
+  } else if(filterType == 5){
+    document.getElementById("div_ma").style.display = "none";
+    document.getElementById("div_ema").style.display = "none";
+    document.getElementById("div_lpf").style.display = "none";
+    document.getElementById("div_hpf").style.display = "none";
+    document.getElementById("div_lf").style.display = "block";
+    document.getElementById("div_hf").style.display = "block";    
+  } 
 }
 
 function generate(){
@@ -106,6 +125,8 @@ function generate(){
   let maSize = parseInt(document.getElementById("input_mas").value);
   let EMA_a = parseFloat(document.getElementById("input_aema").value);
   let noiseInts = parseFloat(document.getElementById("input_ns").value);
+  let lff = parseFloat(document.getElementById("input_lff").value);
+  let hff = parseFloat(document.getElementById("input_hff").value);
 
   let add_noise_rnd = document.getElementById("input_rndnoise").checked;
   let add_noise_lf = document.getElementById("input_lfnoise").checked;
@@ -175,7 +196,7 @@ function generate(){
     let high_output = [];
 
     //paso bajo 1
-    RC = 1 / (2 * Math.PI * hpff);  
+    RC = 1 / (2 * Math.PI * hff);  
     a = dt / (RC + dt)
     low_output[0] = a * sensor[0];
     for(let t = 1; t < 1000; t++){      
@@ -183,18 +204,41 @@ function generate(){
     }
 
     //paso bajo 2
-    RC = 1 / (2 * Math.PI * lpff);  
+    RC = 1 / (2 * Math.PI * lff);  
     a = dt / (RC + dt)
     high_output[0] = a * sensor[0];
     for(let t = 1; t < 1000; t++){      
       high_output[t] = high_output[t-1] + a * (sensor[t] - high_output[t-1]);  
     }
 
-    //paso banda = paso alto - paso bajo
+    //paso banda = paso bajo 1 - paso bajo 2
     for(let t = 0; t < 1000; t++){  
       output[t] = high_output[t] - low_output[t]; 
     }
+  } else if(filterType == 5){ //elimina banda    
+    let low_output = [];
+    let high_output = [];
 
+    //paso bajo
+    RC = 1 / (2 * Math.PI * hff);  
+    a = dt / (RC + dt)
+    low_output[0] = a * sensor[0];
+    for(let t = 1; t < 1000; t++){      
+      low_output[t] = low_output[t-1] + a * (sensor[t] - low_output[t-1]);  
+    }
+
+    //paso alto
+    RC = 1 / (2 * Math.PI * lff);  
+    a = RC / (RC + dt);
+    high_output[0] = sensor[0];
+    for(let t = 1; t < 1000; t++){      
+      high_output[t] = a * (high_output[t-1] + sensor[t] - sensor[t-1]);  
+    }
+
+    //elimina banda = paso alto + paso bajo
+    for(let t = 0; t < 1000; t++){  
+      output[t] = high_output[t] + low_output[t]; 
+    }
   }
 
   //*******
