@@ -31,23 +31,26 @@
     <div id="div_ema"><label>Alfa media movil exponencial / Alpha exponential moving average </label><input value="0.2" id="input_aema"></input></div>
     <div id="div_lpf"><label>Frecuencia filtro de paso bajo / Low pass filter frecuency</label><input value="0.5" id="input_lpff"></input>Hz</div>
     <div id="div_hpf"><label>Frecuencia filtro de paso alto / High pass filter frecuency</label><input value="0.05" id="input_hpff"></input>Hz</div>
-    <div id="div_lf"><label>Frecuencia mínima / Low frecuency</label><input value="0.5" id="input_lff"></input>Hz</div>
-    <div id="div_hf"><label>Frecuencia maxima / High frecuency</label><input value="0.05" id="input_hff"></input>Hz</div>
+    <div id="div_lf"><label>Frecuencia máxima / High frecuency</label><input value="0.5" id="input_hff"></input>Hz</div>
+    <div id="div_hf"><label>Frecuencia mínima / Low frecuency</label><input value="0.05" id="input_lff"></input>Hz</div>
   </fieldset>
 
   <fieldset>
     <legend>Ruido / Noise</legend>
     <div>
+      <label>
       <input type="checkbox" id="input_rndnoise" name="rnd" checked>
-      <label for="rnd">Aleatorio / Random</label>
+      Aleatorio / Random</label>
     </div>
     <div>
+      <label>
       <input type="checkbox" id="input_lfnoise" name="lf" checked>
-      <label for="lf">Baja frecuencia / Low frecuency (0.015 Hz)</label>
+      Baja frecuencia / Low frecuency (0.015 Hz)</label>
     </div>
     <div>
+      <label>
       <input type="checkbox" id="input_hfnoise" name="hf" checked>
-      <label for="hf">Alta frecuencia / High frecuency (1.5 Hz)</label>
+      Alta frecuencia / High frecuency (1.5 Hz)</label>
     </div>
     <label>Intensidad de ruido / Noise streng </label><input value="0.5" id="input_ns"></input><br>
   </fieldset>
@@ -195,23 +198,23 @@ function generate(){
     let low_output = [];
     let high_output = [];
 
-    //paso bajo 1
-    RC = 1 / (2 * Math.PI * hff);  
+    //paso bajo fmin (frecuencia minima)
+    RC = 1 / (2 * Math.PI * lff);  
     a = dt / (RC + dt)
     low_output[0] = a * sensor[0];
     for(let t = 1; t < 1000; t++){      
       low_output[t] = low_output[t-1] + a * (sensor[t] - low_output[t-1]);  
     }
 
-    //paso bajo 2
-    RC = 1 / (2 * Math.PI * lff);  
+    //paso bajo fmax (frecuencia maxima)
+    RC = 1 / (2 * Math.PI * hff);  
     a = dt / (RC + dt)
     high_output[0] = a * sensor[0];
     for(let t = 1; t < 1000; t++){      
       high_output[t] = high_output[t-1] + a * (sensor[t] - high_output[t-1]);  
     }
 
-    //paso banda = paso bajo 1 - paso bajo 2
+    //paso banda = paso bajo fmax - paso bajo fmin
     for(let t = 0; t < 1000; t++){  
       output[t] = high_output[t] - low_output[t]; 
     }
@@ -220,7 +223,7 @@ function generate(){
     let high_output = [];
 
     //paso bajo
-    RC = 1 / (2 * Math.PI * hff);  
+    RC = 1 / (2 * Math.PI * lff);  
     a = dt / (RC + dt)
     low_output[0] = a * sensor[0];
     for(let t = 1; t < 1000; t++){      
@@ -228,7 +231,7 @@ function generate(){
     }
 
     //paso alto
-    RC = 1 / (2 * Math.PI * lff);  
+    RC = 1 / (2 * Math.PI * hff);  
     a = RC / (RC + dt);
     high_output[0] = sensor[0];
     for(let t = 1; t < 1000; t++){      
