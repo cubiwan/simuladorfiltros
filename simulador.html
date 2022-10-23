@@ -11,9 +11,12 @@
     <legend>Señal / Signal</legend>
     <select id="input_signal">
       <option value="0">Seno / Sine (0.15 Hz) </option>
-      <option value="1">Seno Positiva / Sine Positive (0.33 Hz) </option>
+      <option value="1">Seno Positiva / Sine Positive (0.15 Hz) </option>
       <option value="2">Cuadrada / Square (0.15 Hz)</option>
-      <option value="3">Constante / Const </option>    
+      <option value="3">Triangular / Triangle (0.15 Hz) </option>    
+      <option value="4">Dientes de sierra / Sawtooth (0.15 Hz)</option>    
+      <option value="5">Impulso / Impulse (0.15 Hz)</option>    
+      <option value="6">Constante / Const (0.15 Hz)</option>    
     </select>
   </fieldset>
 
@@ -119,6 +122,8 @@ function generate(){
   let a;
   let dt = 0.1;  
   let RC;
+  let p = 2*Math.PI; //periodo
+  let sp = p/2; //semiperiodo
 
   let signalType = document.getElementById("input_signal").value;
   let filterType = document.getElementById("input_filter").value;
@@ -135,17 +140,33 @@ function generate(){
   let add_noise_lf = document.getElementById("input_lfnoise").checked;
   let add_noise_hf = document.getElementById("input_hfnoise").checked;
 
+
   for(let t = 0; t < 1000; t+=dt){  
     let s;
-    if(signalType == 0){
+    if(signalType == 0){ //seno
       s = Math.sin(t);
-    } else if(signalType == 1){
-      s = Math.abs(Math.sin(t));
-    } else if(signalType == 2){
+    } else if(signalType == 1){ //seno pos.
+      s = Math.abs(Math.sin(t/2));
+    } else if(signalType == 2){ //cuadrada
       s = Math.sin(t) > 0? 1: 0;
-    } else if(signalType == 3){
+    } else if(signalType == 3){ //triangular
+      if(t % p < sp){ //medio periodo
+        s = (t % sp)/sp;
+      } else {
+        s = 1 - ((t % sp)/sp);
+      }
+    } else if(signalType == 4){ //dientes de sierra
+      s = (t % p)/p;
+    } else if(signalType == 5){ //impulso
+      if((t % p) < 0.11){
+        s = 1;
+      }else{
+        s = 0;
+      }
+    } else if(signalType == 6){ //constante
       s = 1;
     }
+
 
     time.push(t);
     signal.push(s);
